@@ -202,7 +202,7 @@ function setLayer(name, on){
 }));
 
 // SketchUp scenes
-const CAMS = [{"name": "Last Saved SketchUp View", "pos": [-4.408, 266.674, -3.391], "tgt": [-4.408, 262.674, -3.391]}, {"name": "Scene 1", "pos": [11.314, 268.696, -4.913], "tgt": [11.314, 264.696, -4.913]}, {"name": "Scene 2", "pos": [-116.375, 387.181, 103.232], "tgt": [-115.665, 383.39, 102.175]}, {"name": "Scene 3", "pos": [58.031, 383.037, 139.472], "tgt": [57.075, 379.407, 138.09]}, {"name": "Scene 4", "pos": [98.167, 475.048, -168.027], "tgt": [97.078, 471.408, -166.775]}, {"name": "Scene 5", "pos": [-168.081, 426.447, -165.5], "tgt": [-167.049, 422.839, -164.114]}, {"name": "Scene 6", "pos": [-34.462, 1.452, 4.057], "tgt": [-34.462, 1.452, 0.057]}, {"name": "Scene 7", "pos": [-36.18, 1.639, 2.005], "tgt": [-34.366, 1.654, -1.561]}, {"name": "Scene 8", "pos": [-45.603, 1.669, -2.093], "tgt": [-41.603, 1.669, -2.093]}, {"name": "Scene 9", "pos": [-39.067, 1.24, -1.756], "tgt": [-35.067, 1.24, -1.756]}, {"name": "Scene 10", "pos": [-45.55, 1.83, -5.389], "tgt": [-41.55, 1.83, -5.389]}, {"name": "Scene 11", "pos": [-39.675, 1.42, -10.612], "tgt": [-39.675, 1.42, -6.612]}, {"name": "Scene 12", "pos": [-34.854, 1.776, -6.537], "tgt": [-38.854, 1.776, -6.537]}, {"name": "Scene 13", "pos": [-33.704, 1.493, -2.228], "tgt": [-37.704, 1.493, -2.228]}, {"name": "Scene 14", "pos": [-41.235, 1.616, -6.001], "tgt": [-45.235, 1.616, -6.001]}, {"name": "Scene 15", "pos": [-37.478, 1.7, -0.956], "tgt": [-40.883, 1.63, -3.053]}, {"name": "Scene 16", "pos": [-36.919, 1.817, -0.752], "tgt": [-40.325, 1.747, -2.849]}, {"name": "Scene 17", "pos": [-48.821, 1.414, -4.404], "tgt": [-45.494, 1.435, -2.184]}];
+const CAMS = [{"name": "Scene 1 · Ruang Manager", "pos": [3.35, 1.75, -0.45], "tgt": [0.9, 0.9, -2.4]}, {"name": "Scene 2 · Ruang Rapat", "pos": [4.6, 1.6, -4.9], "tgt": [0.9, 0.9, -7.0]}, {"name": "Scene 3 · Area Kerja 1", "pos": [9.6, 1.6, -4.8], "tgt": [5.6, 0.9, -7.0]}, {"name": "Scene 4 · Area Kerja 2", "pos": [10.6, 1.6, -7.4], "tgt": [14.4, 0.9, -8.8]}, {"name": "Scene 5 · Area Kerja Bersama", "pos": [15.3, 1.7, -2.3], "tgt": [4.5, 0.9, -2.3]}, {"name": "Scene 6 · Ruang Kerja", "pos": [17.3, 1.6, -4.7], "tgt": [15.6, 0.9, -6.8]}, {"name": "Scene 7 · Pantry & Loker", "pos": [17.8, 1.6, -4.7], "tgt": [19.9, 1.0, -6.6]}, {"name": "Scene 8 · Lounge", "pos": [16.1, 1.6, -0.6], "tgt": [19.6, 0.8, -3.8]}, {"name": "Scene 9 · Udara (aerial)", "pos": [10.2, 24, 13], "tgt": [10.2, 0.5, -4.6]}];
 const sel = $('scene');
 CAMS.forEach((c, i) => {
   if (/Last Saved/.test(c.name)) return;
@@ -426,13 +426,16 @@ function onModel(gltf){
     if (o.isMesh){
       const m = o.material;
       if (m.map){ m.map.anisotropy = renderer.capabilities.getMaxAnisotropy(); m.map.encoding = THREE.sRGBEncoding; }
-      const b = new THREE.MeshBasicMaterial({map: m.map || null, color: m.map ? 0xffffff : m.color.clone().convertSRGBToLinear(), side: THREE.DoubleSide,
+      const ca = o.geometry.attributes.color;
+      if (ca){ const f = new Float32Array(ca.count * 3); for (let i = 0; i < ca.count; i++){ const v = Math.pow(ca.getX(i), 2.2); f[3*i] = f[3*i+1] = f[3*i+2] = v; }
+        o.geometry.setAttribute('color', new THREE.BufferAttribute(f, 3)); }
+      const b = new THREE.MeshBasicMaterial({vertexColors: !!ca, map: m.map || null, color: m.map ? 0xffffff : m.color.clone().convertSRGBToLinear(), side: THREE.DoubleSide,
         transparent: m.transparent, opacity: m.opacity, depthWrite: !m.transparent,
         polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, clippingPlanes: CLIP});
       b.name = m.name; o.material = b; m.dispose();
       if (b.transparent) o.renderOrder = 2;
     }
-    if (o.isLine || o.isLineSegments){ o.material.transparent = true; o.material.opacity = 0.55; o.material.depthWrite = false; o.material.color.set(0x1a1714); o.material.clippingPlanes = CLIP; }
+    if (o.isLine || o.isLineSegments){ o.material.transparent = true; o.material.opacity = /furnitur/.test(o.material.name) ? 0.42 : 0.8; o.material.depthWrite = false; o.material.color.set(0x1a1714); o.material.clippingPlanes = CLIP; }
     if (o.isMesh && !o.material.transparent) allMeshes.push(o);
     if (o.isMesh && o.geometry.attributes._objid) pickables.push(o);
   });
@@ -449,9 +452,9 @@ function fail(){ $('loadTxt').textContent = 'Model gagal dimuat. Muat ulang hala
 // model is published as base64 text (binary .glb is not a served type)
 (async () => {
   try {
-    const res = await fetch('model-glb.txt');
+    const res = await fetch('model.glb');
     if (!res.ok) throw new Error(res.status);
-    const total = +res.headers.get('content-length') || 15277177;
+    const total = +res.headers.get('content-length') || 26421064;
     const reader = res.body.getReader(); const chunks = []; let got = 0;
     for (;;){
       const {done, value} = await reader.read(); if (done) break;
@@ -459,9 +462,7 @@ function fail(){ $('loadTxt').textContent = 'Model gagal dimuat. Muat ulang hala
       $('prog').firstElementChild.style.width = Math.min(100, 100 * got / total).toFixed(0) + '%';
       $('loadTxt').textContent = 'Memuat model 3D… ' + Math.min(100, 100 * got / total).toFixed(0) + '%';
     }
-    const txt = new TextDecoder().decode(await new Blob(chunks).arrayBuffer());
-    const bin = atob(txt.trim()); const buf = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    const buf = new Uint8Array(await new Blob(chunks).arrayBuffer());
     $('loadTxt').textContent = 'Menyiapkan tampilan…';
     loader.parse(buf.buffer, './', onModel, fail);
   } catch (e) { fail(); }
