@@ -1,0 +1,478 @@
+<title>Unit RRP 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas; floating glass panels pinned to safe-area edges; vertical cut slider on the right edge */
+:root{
+  --bg:#e9e6e1; --panel:rgba(250,248,245,.86); --line:rgba(40,36,32,.14);
+  --fg:#2a2622; --muted:#6f675e; --accent:#b4552d; --accent-fg:#fff; --chip:#f3efe9;
+  --sky-top:#f4f1ec; --sky-bot:#d9d3ca;
+  --display:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1c1a18; --panel:rgba(36,33,30,.86); --line:rgba(255,245,235,.12);
+  --fg:#efe9e1; --muted:#a69d92; --accent:#e07a4b; --accent-fg:#1c1a18; --chip:#2e2a26;
+  --sky-top:#2a2724; --sky-bot:#151311; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1c1a18; --panel:rgba(36,33,30,.86); --line:rgba(255,245,235,.12);
+  --fg:#efe9e1; --muted:#a69d92; --accent:#e07a4b; --accent-fg:#1c1a18; --chip:#2e2a26;
+  --sky-top:#2a2724; --sky-bot:#151311; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#stage{position:fixed;inset:0;background:linear-gradient(var(--sky-top),var(--sky-bot))}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.panel{position:fixed;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid var(--line);border-radius:14px;z-index:5}
+#brand{top:calc(12px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));padding:10px 14px}
+#brand b{font-weight:800;letter-spacing:.14em;font-size:15px}
+#brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.04em;margin-top:2px}
+#layers{top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));padding:6px;
+  display:flex;flex-wrap:wrap;gap:4px;max-width:58vw;justify-content:flex-end}
+.chip{font:600 12px var(--display);border:1px solid var(--line);background:var(--chip);color:var(--fg);
+  padding:7px 10px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+#bar{left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));padding:8px;
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(560px,calc(100% - 92px - max(12px,env(safe-area-inset-left,0px))))}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;border:1px solid var(--line)}
+.seg button{font:600 13px var(--display);border:0;background:transparent;color:var(--fg);padding:8px 11px;border-radius:8px;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+select{font:600 13px var(--display);background:var(--chip);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-width:150px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#cut{right:max(12px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);width:62px;padding:10px 0;
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+#cut .lab{font:500 10px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+#cut .val{font:500 12px var(--mono);font-variant-numeric:tabular-nums}
+#cutWrap{height:min(42vh,300px);width:44px;position:relative}
+#cutRange{position:absolute;left:50%;top:50%;width:min(42vh,300px);height:44px;transform:translate(-50%,-50%) rotate(-90deg);
+  accent-color:var(--accent);background:transparent;margin:0}
+#full{font:600 11px var(--display);border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:8px;padding:6px 8px;cursor:pointer}
+#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  font:400 11px var(--mono);color:var(--muted);z-index:4;white-space:nowrap;transition:opacity .6s}
+#load{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:20;
+  background:var(--bg);font:500 13px var(--mono);color:var(--muted)}
+#load .t{font:800 30px var(--display);letter-spacing:.2em;color:var(--fg)}
+#prog{width:200px;height:3px;background:var(--line);border-radius:3px;overflow:hidden}
+#prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+@media (max-width:520px){#bar{width:calc(100% - 24px);left:12px;transform:none;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  #cut{top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:none}
+  #cutWrap{height:34vh}#cutRange{width:34vh}#hint{bottom:calc(128px + env(safe-area-inset-bottom,0px))}
+  #layers{max-width:62vw}
+  #layers{top:calc(66px + env(safe-area-inset-top,0px));left:12px;right:auto;max-width:none;justify-content:flex-start}}
+#dimBtn{font:600 13px var(--display);border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:10px;padding:8px 10px;cursor:pointer}
+#dimBtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+#card{left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+#card .row{display:flex;align-items:center;gap:8px}
+#card .code{font:600 12px var(--mono);background:var(--accent);color:var(--accent-fg);border-radius:6px;padding:3px 7px;white-space:nowrap}
+#card .nm{font-weight:600;font-size:15px;line-height:1.25;min-width:0;flex:1}
+#card .kind{font-size:12px;color:var(--muted)}
+#card ul{margin:0;padding-left:18px;font-size:12px;color:var(--fg)}
+#card .acts{display:flex;gap:6px;margin-top:4px}
+#card .acts button{flex:1;font:600 13px var(--display);border-radius:10px;padding:10px;border:1px solid var(--line);background:var(--chip);color:var(--fg);cursor:pointer}
+#card .acts .go{background:var(--accent);color:var(--accent-fg);border-color:transparent;flex:2}
+#gk{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}
+#gkHead{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 10px max(12px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--panel)}
+#gkHead .t{flex:1;min-width:0;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#gkHead .t small{display:block;font:400 11px var(--mono);color:var(--muted)}
+#gkHead button{font:600 13px var(--display);border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:10px;padding:9px 12px;cursor:pointer}
+#gkHead .close{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+#gkView{flex:1;position:relative;overflow:hidden;touch-action:none;background:#fff}
+#gkImg{position:absolute;left:0;top:0;transform-origin:0 0;user-select:none;-webkit-user-drag:none;max-width:none}
+#gkTip{position:absolute;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font:400 11px var(--mono);color:#6f675e;background:rgba(255,255,255,.85);padding:4px 8px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div id="stage"></div>
+
+<div id="brand" class="panel"><b>UNIT RRP</b><small>Interior · model 3D desain · warna material asli</small></div>
+
+<div id="layers" class="panel" role="group" aria-label="Lapisan">
+  <button class="chip" id="ly-plafon" aria-pressed="true">Plafon</button>
+  <button class="chip" id="ly-lampu" aria-pressed="true">Lampu</button>
+  <button class="chip" id="ly-furnitur" aria-pressed="true">Furnitur</button>
+  <button class="chip" id="ly-garis" aria-pressed="true">Garis</button>
+</div>
+
+<div id="cut" class="panel">
+  <span class="lab">Potong</span>
+  <span class="val" id="cutVal">+2,40</span>
+  <div id="cutWrap"><input type="range" id="cutRange" min="0.05" max="3.6" step="0.01" value="2.4" aria-label="Tinggi potongan horizontal (m)"></div>
+  <button id="full" title="Tampilkan bangunan utuh">Utuh</button>
+</div>
+
+<div id="bar" class="panel">
+  <div class="seg" role="group" aria-label="Arah pandang">
+    <button id="v-3d" class="on">3D</button><button id="v-top">Atas</button><button id="v-front">Depan</button><button id="v-side">Samping</button>
+  </div>
+  <select id="scene" aria-label="Scene"><option value="">Scene…</option></select>
+  <select id="sheetSel" aria-label="Gambar kerja"><option value="">Gambar kerja…</option><option value="0">G-01 Sampul & daftar gambar</option><option value="1">A-01 Denah layout furnitur</option><option value="2">A-02 Denah pola lantai</option><option value="3">A-03 Denah rencana plafon</option><option value="4">A-04 Denah wall treatment & partisi</option><option value="5">AX-01 Aksonometri (tanpa plafon)</option></select>
+  <button id="dimBtn" aria-pressed="false" hidden>Dimensi</button>
+</div>
+
+<div id="hint">1 jari: putar · 2 jari: zoom & geser · ketuk furnitur/dinding/lantai/plafon untuk detail</div>
+
+<div id="card" class="panel" hidden>
+  <div class="row"><span class="code" id="cCode"></span><span class="nm" id="cName"></span></div>
+  <div class="kind" id="cKind"></div>
+  <ul id="cMats"></ul>
+  <div class="acts"><button class="go" id="cGo">Lihat gambar kerja</button><button id="cClose">Tutup</button></div>
+</div>
+
+<div id="gk" hidden>
+  <div id="gkHead"><div class="t" id="gkTitle"></div><button id="gkFit">Pas layar</button><button class="close" id="gkClose">Tutup</button></div>
+  <div id="gkView"><img id="gkImg" alt="Gambar kerja"><div id="gkTip">cubit / scroll untuk zoom · seret untuk geser</div></div>
+</div>
+
+<div id="load"><div class="t">UNIT RRP</div><div id="prog"><i></i></div><div id="loadTxt">Memuat model 3D…</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+(function(){
+const $ = id => document.getElementById(id);
+const stage = $('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.localClippingEnabled = true;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 400);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.09; controls.screenSpacePanning = true;
+controls.minDistance = 0.5; controls.maxDistance = 60; controls.maxPolarAngle = Math.PI * 0.98;
+controls.touches = {ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN};
+
+// Mode material akurat: tanpa pencahayaan/exposure; tekstur & warna tampil apa adanya (unlit)
+renderer.toneMapping = THREE.NoToneMapping;
+
+// horizontal cut plane: keeps geometry below height h (m)
+const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 2.4);
+const CLIP = [cutPlane];
+const TOP = 3.6;
+let cutRing = null;
+
+// building frame (unit): x -0.68..8.82, z -13.83..0 (m)
+const C = new THREE.Vector3(4.0, 1.2, -6.9);
+const VIEWS = {"3d": {"pos": [22.13, 17, 10.35], "tgt": [10.13, 0.6, -4.65]}, "top": {"pos": [10.13, 34, -4.6], "tgt": [10.13, 0, -4.65]}, "front": {"pos": [10.13, 1.7, 17], "tgt": [10.13, 1.5, -2]}, "side": {"pos": [36.41, 1.8, -4.65], "tgt": [16.41, 1.5, -4.65]}};
+let anim = null;
+function fly(pos, tgt, ms){
+  const p0 = camera.position.clone(), t0 = controls.target.clone();
+  const p1 = new THREE.Vector3(...pos), t1 = new THREE.Vector3(...tgt);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dur = reduce ? 0 : (ms || 700), st = performance.now();
+  anim = now => {
+    let k = dur ? Math.min(1, (now - st) / dur) : 1; k = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2;
+    camera.position.lerpVectors(p0, p1, k); controls.target.lerpVectors(t0, t1, k);
+    if (k >= 1) anim = null;
+  };
+}
+function setView(id){
+  if (id !== 'top' && orthoOn) setOrtho(false);
+  $('dimBtn').hidden = id !== 'top';
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.id === 'v-' + id));
+  const v = VIEWS[id]; fly(v.pos, v.tgt);
+  $('scene').value = '';
+  if (location.hash && /^#scene-/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+}
+['3d','top','front','side'].forEach(id => $('v-' + id).addEventListener('click', () => setView(id)));
+
+// cut slider
+function setCut(h){
+  h = Math.max(0.05, Math.min(TOP, h));
+  cutPlane.constant = h;
+  $('cutRange').value = h;
+  $('cutVal').textContent = h >= TOP - 0.01 ? 'utuh' : '+' + h.toFixed(2).replace('.', ',');
+  if (cutRing){ cutRing.position.y = h - 0.002; cutRing.visible = h < TOP - 0.01; }
+}
+$('cutRange').addEventListener('input', e => setCut(parseFloat(e.target.value)));
+$('full').addEventListener('click', () => setCut(TOP));
+
+// layers
+const groups = {};
+function setLayer(name, on){
+  const b = $('ly-' + name); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  if (groups[name]) groups[name].visible = on;
+}
+['plafon','lampu','furnitur','garis'].forEach(n => $('ly-' + n).addEventListener('click', () => {
+  setLayer(n, $('ly-' + n).getAttribute('aria-pressed') !== 'true');
+}));
+
+// SketchUp scenes
+const CAMS = [{"name": "Last Saved SketchUp View", "pos": [-4.408, 266.674, -3.391], "tgt": [-4.408, 262.674, -3.391]}, {"name": "Scene 1", "pos": [11.314, 268.696, -4.913], "tgt": [11.314, 264.696, -4.913]}, {"name": "Scene 2", "pos": [-116.375, 387.181, 103.232], "tgt": [-115.665, 383.39, 102.175]}, {"name": "Scene 3", "pos": [58.031, 383.037, 139.472], "tgt": [57.075, 379.407, 138.09]}, {"name": "Scene 4", "pos": [98.167, 475.048, -168.027], "tgt": [97.078, 471.408, -166.775]}, {"name": "Scene 5", "pos": [-168.081, 426.447, -165.5], "tgt": [-167.049, 422.839, -164.114]}, {"name": "Scene 6", "pos": [-34.462, 1.452, 4.057], "tgt": [-34.462, 1.452, 0.057]}, {"name": "Scene 7", "pos": [-36.18, 1.639, 2.005], "tgt": [-34.366, 1.654, -1.561]}, {"name": "Scene 8", "pos": [-45.603, 1.669, -2.093], "tgt": [-41.603, 1.669, -2.093]}, {"name": "Scene 9", "pos": [-39.067, 1.24, -1.756], "tgt": [-35.067, 1.24, -1.756]}, {"name": "Scene 10", "pos": [-45.55, 1.83, -5.389], "tgt": [-41.55, 1.83, -5.389]}, {"name": "Scene 11", "pos": [-39.675, 1.42, -10.612], "tgt": [-39.675, 1.42, -6.612]}, {"name": "Scene 12", "pos": [-34.854, 1.776, -6.537], "tgt": [-38.854, 1.776, -6.537]}, {"name": "Scene 13", "pos": [-33.704, 1.493, -2.228], "tgt": [-37.704, 1.493, -2.228]}, {"name": "Scene 14", "pos": [-41.235, 1.616, -6.001], "tgt": [-45.235, 1.616, -6.001]}, {"name": "Scene 15", "pos": [-37.478, 1.7, -0.956], "tgt": [-40.883, 1.63, -3.053]}, {"name": "Scene 16", "pos": [-36.919, 1.817, -0.752], "tgt": [-40.325, 1.747, -2.849]}, {"name": "Scene 17", "pos": [-48.821, 1.414, -4.404], "tgt": [-45.494, 1.435, -2.184]}];
+const sel = $('scene');
+CAMS.forEach((c, i) => {
+  if (/Last Saved/.test(c.name)) return;
+  const o = document.createElement('option'); o.value = c.name.replace(/\D/g, ''); o.textContent = c.name; sel.appendChild(o);
+});
+function goScene(n){
+  const c = CAMS.find(c => c.name.replace(/\D/g, '') === String(n) && !/Last/.test(c.name));
+  if (!c) return false;
+  if (orthoOn) setOrtho(false); $('dimBtn').hidden = true;
+  document.querySelectorAll('.seg button').forEach(b => b.classList.remove('on'));
+  sel.value = String(n);
+  fly(c.pos, c.tgt, 900);
+  return true;
+}
+sel.addEventListener('change', () => {
+  if (!sel.value) return;
+  goScene(sel.value);
+  history.replaceState(null, '', '#scene-' + sel.value);
+});
+function fromHash(){
+  const m = /^#scene-(\d+)$/.exec(location.hash || '');
+  if (m && goScene(m[1])) return true;
+  return false;
+}
+window.addEventListener('hashchange', fromHash);
+
+
+// =================== orthographic top view + dimensions ===================
+const ortho = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
+ortho.up.set(0, 0, -1); ortho.position.set(10.13, 40, -4.65);
+const controls2 = new THREE.OrbitControls(ortho, renderer.domElement);
+controls2.enableRotate = false; controls2.screenSpacePanning = true; controls2.enabled = false; controls2.enableDamping = true;
+controls2.target.set(10.13, 0, -4.65); controls2.minZoom = 0.4; controls2.maxZoom = 12;
+controls2.mouseButtons = {LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN};
+controls2.touches = {ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN};
+let orthoOn = false, cutBeforeDims = 2.4;
+function fitOrtho(){
+  const w = stage.clientWidth, h = stage.clientHeight, asp = w / h;
+  const W = 25.8, H = 14.4;                         // model + dimension strings (m)
+  let hh = H / 2; if (hh * asp < W / 2) hh = (W / 2) / asp;
+  ortho.left = -hh * asp; ortho.right = hh * asp; ortho.top = hh; ortho.bottom = -hh; ortho.updateProjectionMatrix();
+}
+const dimGroup = new THREE.Group(); dimGroup.visible = false; scene.add(dimGroup);
+const DY = 3.7;                                    // drawn above everything
+const P = (x, y) => new THREE.Vector3(x / 1000, DY, -y / 1000);
+function textSprite(str, rot){
+  const c = document.createElement('canvas'), g = c.getContext('2d'), fs = 64;
+  g.font = '600 ' + fs + 'px "IBM Plex Mono", ui-monospace, monospace';
+  const w = Math.ceil(g.measureText(str).width) + 16; c.width = w; c.height = fs + 16;
+  g.font = '600 ' + fs + 'px "IBM Plex Mono", ui-monospace, monospace'; g.fillStyle = '#2a2622'; g.textBaseline = 'middle';
+  g.fillText(str, 8, c.height / 2);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  const m = new THREE.SpriteMaterial({map: t, depthTest: false, transparent: true, rotation: rot || 0});
+  const sp = new THREE.Sprite(m); const hgt = 0.16; sp.scale.set(hgt * c.width / c.height, hgt, 1); sp.renderOrder = 11;
+  return sp;
+}
+const DIMS = [["x", -1271, [-150, 0, 150, 850, 2185, 3550, 3650, 4355, 4580, 8059, 9391, 10071, 10321, 15035, 15225, 15711, 15914, 17279, 17529, 19882, 20029, 20158, 20408], [7562, 50, 50, 3172, 50, 50, 50, 50, 50, 29, 50, 50, 50, 50, 50, 50, 50, 4400, 29, 29, 29, 29, 4400], -1], ["x", -1921, [-150, 20408], [29, 29], -1], ["x", 10562, [-150, 0, 150, 850, 2200, 2900, 4250, 5075, 5750, 7100, 7800, 9150, 9989, 10289, 10664, 11354, 12024, 13354, 14029, 14729, 15119, 15419, 16023, 17353, 17508, 17608, 18183, 19498, 20108, 20408], [7862, 7862, 7862, 4636, 7862, 4636, 7862, 7862, 200, 7862, 200, 7862, 9263, 9263, 9263, 200, 9263, 200, 9263, 200, 9263, 9263, 7650, 4500, 7650, 7650, 7650, 179, 7650, 7650], 1], ["y", -1449, [29, 200, 1681, 2574, 3172, 4529, 4724, 7562, 7862, 9263], [17279, 0, 3550, 0, 0, 0, 0, 0, -150, 9989], -1], ["y", -2099, [29, 9263], [-150, -150], -1], ["y", 21708, [29, 179, 685, 1203, 1722, 2240, 2360, 4400, 4520, 7350, 7650, 9263], [20158, 20158, 20158, 20158, 20158, 20158, 20032, 20408, 20408, 20408, 20408, 15419], 1]];
+(function buildDims(){
+  const solid = [], dashed = [];
+  DIMS.forEach(([ax, c, pts, ext, side]) => {
+    const a = pts[0], b = pts[pts.length - 1];
+    if (ax === 'x'){
+      solid.push(P(a - 150, c), P(b + 150, c));
+      pts.forEach((p, i) => {
+        solid.push(P(p - 45, c - 45), P(p + 45, c + 45));
+        if (ext){ const e = ext[i]; const dir = Math.sign(e - c); dashed.push(P(p, e - dir * 60), P(p, c - dir * 120)); }
+      });
+      let nk = 0;
+      for (let i = 0; i < pts.length - 1; i++){
+        const span = pts[i + 1] - pts[i]; let off = 150; if (span < 600){ nk++; off = 150 + (nk % 2 ? 330 : 0); }
+        const sp = textSprite(String(Math.round(span)));
+        sp.position.copy(P((pts[i] + pts[i + 1]) / 2, c + side * (off + 60))); dimGroup.add(sp);
+      }
+    } else {
+      solid.push(P(c, a - 150), P(c, b + 150));
+      pts.forEach((p, i) => {
+        solid.push(P(c - 45, p - 45), P(c + 45, p + 45));
+        if (ext){ const e = ext[i]; const dir = Math.sign(e - c); dashed.push(P(e - dir * 60, p), P(c - dir * 120, p)); }
+      });
+      let nk = 0;
+      for (let i = 0; i < pts.length - 1; i++){
+        const span = pts[i + 1] - pts[i]; let off = 150; if (span < 600){ nk++; off = 150 + (nk % 2 ? 330 : 0); }
+        const sp = textSprite(String(Math.round(span)), Math.PI / 2);
+        sp.position.copy(P(c + side * (off + 60), (pts[i] + pts[i + 1]) / 2)); dimGroup.add(sp);
+      }
+    }
+  });
+  const lm = new THREE.LineBasicMaterial({color: 0x2a2622, depthTest: false});
+  const ls = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(solid), lm); ls.renderOrder = 10; dimGroup.add(ls);
+  const dm = new THREE.LineDashedMaterial({color: 0x6f675e, dashSize: 0.06, gapSize: 0.06, depthTest: false});
+  const ld = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(dashed), dm); ld.computeLineDistances(); ld.renderOrder = 10; dimGroup.add(ld);
+})();
+function setOrtho(on){
+  orthoOn = on;
+  $('dimBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
+  dimGroup.visible = on;
+  controls.enabled = !on; controls2.enabled = on;
+  if (on){ cutBeforeDims = cutPlane.constant; setCut(1.2); fitOrtho(); ortho.zoom = 1; ortho.updateProjectionMatrix();
+           controls2.target.set(10.13, 0, -4.65); ortho.position.set(10.13, 40, -4.65); }
+  else setCut(cutBeforeDims);
+}
+$('dimBtn').addEventListener('click', () => setOrtho(!orthoOn));
+
+// =================== picking furniture / wall treatment ===================
+const ITEMS = {"BF-01": {"code": "BF-01", "name": "Rak dinding stainless di atas meja", "kind": "Furnitur built-in · 2 unit · 5491 x 400 x 800 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: Color M09, STAINLESS"]}, "BF-02": {"code": "BF-02", "name": "Lemari loker", "kind": "Furnitur built-in · 1 unit · 2000 x 600 x 2100 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0126 Violet, LEMARI KAYU1,  0126 Violet 2, CX-9202-NW Creme mapache oak, Metal Aluminum Anodized"]}, "BF-03": {"code": "BF-03", "name": "Kabinet pantry + sink (h 2100)", "kind": "Furnitur built-in · 1 unit · 700 x 600 x 2100 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0126 Violet 2,   Metal Corrugated Shiny 1, Color M08, sink metal, material 25"]}, "BF-04": {"code": "BF-04", "name": "Unit tinggi 400x690 (fungsi konfirmasi)", "kind": "Furnitur built-in · 1 unit · 693 x 404 x 2100 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: material 5,   Color M08 4, BrushAluminium, PlasticoRojo,   Color 000 2"]}, "BF-05": {"code": "BF-05", "name": "Lemari arsip tinggi", "kind": "Furnitur built-in · 2 unit · 1750 x 300 x 2100 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0126 Violet 2,  0126 Violet, C05 Golden Blaze1"]}, "BF-06": {"code": "BF-06", "name": "Kabinet rendah h 800", "kind": "Furnitur built-in · 2 unit · 1940 x 600 x 800 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0126 Violet 2, CX-9202-NW Creme mapache oak 3"]}, "BF-07": {"code": "BF-07", "name": "Papan gabus dinding", "kind": "Furnitur built-in · 2 unit · 400 x 30 x 550 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: cork-board-texture-pattern-background 43300-1481, TC-TH131AA,   Translucent Glass Gray 1, POH-413402"]}, "LF-01": {"code": "LF-01", "name": "Meja kerja panjang + 16 kursi (satu set)", "kind": "Furnitur lepas · 1 unit · 10690 x 2187 x 857 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: M08 Obsidian Black,  0132 LightGray,  0136 Charcoal,  0136 Charcoal 5,   auto 3"]}, "LF-02": {"code": "LF-02", "name": "Set meja kerja + kursi (pod jaring hitam)", "kind": "Furnitur lepas · 8 unit · 1200 x 1180 x 910 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: M08 Obsidian Black,   auto 23, Black MEsh1,   auto 24, Color M03"]}, "LF-03": {"code": "LF-03", "name": "Set meja kerja + kursi", "kind": "Furnitur lepas · 5 unit · 1200 x 1187 x 1143 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: M08 Obsidian Black,   auto 15,   auto 16,  0136 Charcoal,  0135 DarkGray"]}, "LF-04": {"code": "LF-04", "name": "Set meja + kursi kerja", "kind": "Furnitur lepas · 2 unit · 1200 x 981 x 857 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: M08 Obsidian Black,  0132 LightGray,  0136 Charcoal,  0136 Charcoal 5,   auto 3"]}, "LF-05": {"code": "LF-05", "name": "Meja kerja 1800x540", "kind": "Furnitur lepas · 5 unit · 1800 x 542 x 750 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: Propan Acrylux  018-1 - Pale Moon,   auto 19,   auto 22, material 7 8,   auto 7"]}, "LF-06": {"code": "LF-06", "name": "Meja rapat 1200x1200", "kind": "Furnitur lepas · 3 unit · 1201 x 1200 x 754 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: kaki meja dan compartment, Wood , kayu atas"]}, "LF-07": {"code": "LF-07", "name": "Kursi rapat putih", "kind": "Furnitur lepas · 8 unit · 464 x 395 x 858 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0129 WhiteSmoke,   0136 Charcoal 3,   auto 35,   auto 36"]}, "LF-08": {"code": "LF-08", "name": "Kursi kerja", "kind": "Furnitur lepas · 1 unit · 523 x 490 x 857 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0132 LightGray,  0136 Charcoal,  0136 Charcoal 5,   auto 3"]}, "LF-09": {"code": "LF-09", "name": "Kursi manager", "kind": "Furnitur lepas · 1 unit · 664 x 629 x 905 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:   auto 25,   auto 26,   auto 28,   auto 27,   auto 6"]}, "LF-10": {"code": "LF-10", "name": "Meja manager + laci", "kind": "Furnitur lepas · 1 unit · 1957 x 1653 x 702 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: Plastic Simple GrainS Black, Wood 01, Wood 23  Painted"]}, "LF-11": {"code": "LF-11", "name": "Sofa 2 dudukan", "kind": "Furnitur lepas · 2 unit · 1320 x 740 x 837 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: Shizu,  0136 Charcoal"]}, "LF-12": {"code": "LF-12", "name": "Sofa 3 dudukan kulit", "kind": "Furnitur lepas · 1 unit · 2044 x 822 x 863 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:   auto 29, Kulit Krem, Kulit Coklat"]}, "LF-13": {"code": "LF-13", "name": "Meja kopi", "kind": "Furnitur lepas · 1 unit · 1254 x 700 x 460 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0126 Violet 2,   Metal Corrogated Shiny 5,   Metal Corrogated Shiny 5 6"]}, "LF-14": {"code": "LF-14", "name": "Meja samping", "kind": "Furnitur lepas · 1 unit · 483 x 483 x 370 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: Color D04, material 10"]}, "LF-15": {"code": "LF-15", "name": "Kursi / stool honeycomb", "kind": "Furnitur lepas · 5 unit · 480 x 453 x 773 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: Metal Corrugated Shiny,   Metal Aluminum Anodized 1, Honeycomb"]}, "LF-16": {"code": "LF-16", "name": "Stool", "kind": "Furnitur lepas · 3 unit · 426 x 409 x 402 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: material 18, material 18 7"]}, "LF-17": {"code": "LF-17", "name": "Bangku rendah", "kind": "Furnitur lepas · 1 unit · 793 x 409 x 380 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: material 19"]}, "LF-18": {"code": "LF-18", "name": "Mesin fotokopi", "kind": "Furnitur lepas · 1 unit · 1200 x 500 x 1065 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: material 7, PDM Multi-function printer-copier grey light1, PDM Multi-function printer-copier grey dark, PDM Multi-function printer-copier grey bright, PDM Multi-function printer-copier green light"]}, "LF-19": {"code": "LF-19", "name": "Meja / kabinet printer", "kind": "Furnitur lepas · 2 unit · 1114 x 500 x 750 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model: material 7"]}, "LF-20": {"code": "LF-20", "name": "TV / monitor dinding", "kind": "Furnitur lepas · 3 unit · 1411 x 65 x 816 mm", "sheet": "A-01", "img": "gk/A-01.jpg", "mats": ["Material model:  0136 Charcoal, Windows 10 Desktop,   Color M08 1, Color M09"]}, "WF-01": {"code": "WF-01", "name": "Cat dinding putih (material default model)", "kind": "Wall treatment / finishing dinding", "sheet": "A-04", "img": "gk/A-04.jpg", "mats": ["Cat dinding putih (material default model)"]}, "WF-02": {"code": "WF-02", "name": "Finishing tekstur semen ekspos / concrete look (tekstur model)", "kind": "Wall treatment / finishing dinding", "sheet": "A-04", "img": "gk/A-04.jpg", "mats": ["Finishing tekstur semen ekspos / concrete look (tekstur model)"]}, "WF-03": {"code": "WF-03", "name": "Cat dinding off-white (Wall_paint_fine)", "kind": "Wall treatment / finishing dinding", "sheet": "A-04", "img": "gk/A-04.jpg", "mats": ["Cat dinding off-white (Wall_paint_fine)"]}, "WF-04": {"code": "WF-04", "name": "Cladding kolom HPL motif kayu (LEMARI_KAYU1)", "kind": "Wall treatment / finishing dinding", "sheet": "A-04", "img": "gk/A-04.jpg", "mats": ["Cladding kolom HPL motif kayu (LEMARI_KAYU1)"]}, "W3": {"code": "W3", "name": "Partisi kaca", "kind": "Dinding / partisi", "sheet": "A-04", "img": "gk/A-04.jpg", "mats": ["Partisi kaca tebal 10 (sesuai model), kaca tempered frameless *"]}, "FL-01": {"code": "FL-01", "name": "Vinyl plank motif kayu", "kind": "Material lantai", "sheet": "A-02", "img": "gk/A-02.jpg", "mats": ["Tekstur model \"VINYL_AREA_MANAGER\"; ukuran papan usulan 180 x 1220"]}, "PL-01": {"code": "PL-01", "name": "Plafon gypsum, cat putih *", "kind": "Plafon (elevasi +3.000 s/d +3.555)", "sheet": "A-03", "img": "gk/A-03.jpg", "mats": ["Material konfirmasi"]}};
+const OBJIDS = {"1": "WF-01", "2": "WF-02", "3": "FL-01", "4": "WF-03", "5": "BF-02", "6": "BF-04", "7": "BF-03", "8": "BF-06", "9": "BF-05", "10": "W3", "11": "LF-01", "12": "BF-07", "13": "LF-13", "14": "LF-18", "15": "LF-19", "16": "PL-01", "17": "WF-04", "18": "LF-20", "19": "LF-11", "20": "LF-08", "21": "LF-09", "22": "LF-10", "23": "LF-07", "24": "LF-16", "25": "LF-06", "26": "LF-17", "27": "LF-02", "28": "LF-15", "29": "LF-03", "30": "LF-04", "31": "LF-05", "32": "LF-14", "33": "LF-12", "34": "BF-01"};
+const SHEETS = [{"code": "G-01", "name": "Sampul & daftar gambar", "img": "gk/G-01.jpg"}, {"code": "A-01", "name": "Denah layout furnitur", "img": "gk/A-01.jpg"}, {"code": "A-02", "name": "Denah pola lantai", "img": "gk/A-02.jpg"}, {"code": "A-03", "name": "Denah rencana plafon", "img": "gk/A-03.jpg"}, {"code": "A-04", "name": "Denah wall treatment & partisi", "img": "gk/A-04.jpg"}, {"code": "AX-01", "name": "Aksonometri (tanpa plafon)", "img": "gk/AX-01.jpg"}];
+const pickables = [], allMeshes = [];
+const ray = new THREE.Raycaster();
+let down = null, nPtr = 0, selCode = null, hiMesh = null;
+renderer.domElement.addEventListener('pointerdown', e => { nPtr++; down = nPtr === 1 ? {x: e.clientX, y: e.clientY, t: performance.now()} : null; });
+const endPtr = e => {
+  nPtr = Math.max(0, nPtr - 1);
+  if (down && nPtr === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 450) pick(e);
+  if (nPtr === 0) down = null;
+};
+renderer.domElement.addEventListener('pointerup', endPtr);
+renderer.domElement.addEventListener('pointercancel', () => { nPtr = 0; down = null; });
+function visibleChain(o){ for (; o; o = o.parent) if (!o.visible) return false; return true; }
+function pick(e){
+  const r = renderer.domElement.getBoundingClientRect();
+  const v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(v, orthoOn ? ortho : camera);
+  const hits = ray.intersectObjects(allMeshes.filter(visibleChain), false);
+  // anything nearer that is not pickable (walls without finish id etc.) also counts
+  let id = 0;
+  for (const h of hits){
+    if (h.point.y > cutPlane.constant + 0.001) continue;
+    const at = h.object.geometry.attributes._objid; id = at ? Math.round(at.getX(h.face.a)) : 0; break;
+  }
+  const code = OBJIDS[id];
+  if (code && ITEMS[code]) select(code); else deselect();
+}
+function highlight(code){
+  if (hiMesh){ scene.remove(hiMesh); hiMesh.geometry.dispose(); hiMesh = null; }
+  if (!code) return;
+  const ids = Object.keys(OBJIDS).filter(k => OBJIDS[k] === code).map(Number);
+  const out = [];
+  pickables.forEach(m => {
+    const g = m.geometry, pos = g.attributes.position, oid = g.attributes._objid, idx = g.index;
+    for (let i = 0; i < idx.count; i += 3){
+      const a = idx.getX(i); if (ids.indexOf(Math.round(oid.getX(a))) < 0) continue;
+      for (let k = 0; k < 3; k++){ const j = idx.getX(i + k); out.push(pos.getX(j), pos.getY(j), pos.getZ(j)); }
+    }
+  });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  hiMesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color: 0xe07a4b, transparent: true, opacity: 0.38, side: THREE.DoubleSide,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, clippingPlanes: CLIP}));
+  hiMesh.renderOrder = 5; scene.add(hiMesh);
+}
+function select(code){
+  const it = ITEMS[code]; selCode = code;
+  $('cCode').textContent = it.code; $('cName').textContent = it.name; $('cKind').textContent = it.kind + ' · lembar ' + it.sheet;
+  $('cMats').innerHTML = ''; it.mats.forEach(m => { const li = document.createElement('li'); li.textContent = m; $('cMats').appendChild(li); });
+  $('cGo').textContent = 'Lihat gambar kerja · ' + it.sheet;
+  $('card').hidden = false; highlight(code);
+}
+function deselect(){ selCode = null; $('card').hidden = true; highlight(null); }
+$('cClose').addEventListener('click', deselect);
+
+// =================== working drawing viewer ===================
+let saved = null, z = {s: 1, x: 0, y: 0}, imgW = 1, imgH = 1;
+const gkView = $('gkView'), gkImg = $('gkImg');
+function applyZ(){ gkImg.style.transform = 'translate(' + z.x + 'px,' + z.y + 'px) scale(' + z.s + ')'; }
+function fitImg(){ const W = gkView.clientWidth, H = gkView.clientHeight; z.s = Math.min(W / imgW, H / imgH); z.x = (W - imgW * z.s) / 2; z.y = (H - imgH * z.s) / 2; applyZ(); }
+function openGK(arg){
+  const it = (arg && arg.sheet) ? arg : ITEMS[selCode]; if (!it) return;
+  saved = {pos: camera.position.clone(), tgt: controls.target.clone(), opos: ortho.position.clone(), otgt: controls2.target.clone(), ozoom: ortho.zoom, ortho: orthoOn, cut: cutPlane.constant};
+  $('gkTitle').innerHTML = ''; $('gkTitle').textContent = it.sheet + ' – ' + (it.code ? it.code + ' ' : '') + it.name;
+  gkImg.onload = () => { imgW = gkImg.naturalWidth; imgH = gkImg.naturalHeight; gkImg.style.width = imgW + 'px'; fitImg(); };
+  gkImg.src = it.img; $('gk').hidden = false;
+}
+function closeGK(){
+  $('gk').hidden = true;
+  if (saved){  // kembali ke view saat gambar kerja dibuka
+    anim = null;
+    camera.position.copy(saved.pos); controls.target.copy(saved.tgt); controls.update();
+    ortho.position.copy(saved.opos); controls2.target.copy(saved.otgt); ortho.zoom = saved.ozoom; ortho.updateProjectionMatrix(); controls2.update();
+    setCut(saved.cut);
+  }
+}
+$('cGo').addEventListener('click', () => openGK());
+$('sheetSel').addEventListener('change', e => { const v = e.target.value; if (v === '') return; const sh = SHEETS[+v]; openGK({sheet: sh.code, code: '', name: sh.name, img: sh.img}); e.target.value = ''; }); $('gkClose').addEventListener('click', closeGK); $('gkFit').addEventListener('click', fitImg);
+const gp = new Map(); let gl0 = null;
+gkView.addEventListener('pointerdown', e => { gkView.setPointerCapture(e.pointerId); gp.set(e.pointerId, {x: e.clientX, y: e.clientY}); gl0 = null; });
+gkView.addEventListener('pointermove', e => {
+  const p = gp.get(e.pointerId); if (!p) return;
+  if (gp.size === 1){ z.x += e.clientX - p.x; z.y += e.clientY - p.y; }
+  p.x = e.clientX; p.y = e.clientY;
+  if (gp.size >= 2){ const [a, b] = [...gp.values()]; const r = gkView.getBoundingClientRect();
+    const cx = (a.x + b.x) / 2 - r.left, cy = (a.y + b.y) / 2 - r.top, d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (gl0){ const k = d / gl0.d; zoomAt(cx, cy, k); z.x += cx - gl0.cx; z.y += cy - gl0.cy; }
+    gl0 = {cx, cy, d}; }
+  applyZ();
+});
+const gup = e => { gp.delete(e.pointerId); gl0 = null; };
+gkView.addEventListener('pointerup', gup); gkView.addEventListener('pointercancel', gup);
+function zoomAt(cx, cy, k){ const ns = Math.max(0.05, Math.min(8, z.s * k)); k = ns / z.s; z.x = cx - (cx - z.x) * k; z.y = cy - (cy - z.y) * k; z.s = ns; }
+gkView.addEventListener('wheel', e => { e.preventDefault(); const r = gkView.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); applyZ(); }, {passive: false});
+gkView.addEventListener('dblclick', fitImg);
+window.addEventListener('resize', () => { if (!$('gk').hidden) fitImg(); });
+
+function resize(){
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  camera.fov = w < h ? 55 : 40; camera.updateProjectionMatrix();
+  fitOrtho();
+}
+window.addEventListener('resize', resize); resize();
+
+camera.position.set(...VIEWS['3d'].pos); controls.target.set(...VIEWS['3d'].tgt); controls.update();
+
+let hintT = setTimeout(() => $('hint').style.opacity = 0, 6000);
+renderer.domElement.addEventListener('pointerdown', () => { $('hint').style.opacity = 0; clearTimeout(hintT); }, {once:true});
+
+// load model
+const loader = new THREE.GLTFLoader();
+function onModel(gltf){
+  const root = gltf.scene;
+  root.traverse(o => {
+    if (o.isMesh){
+      const m = o.material;
+      if (m.map){ m.map.anisotropy = renderer.capabilities.getMaxAnisotropy(); m.map.encoding = THREE.sRGBEncoding; }
+      const b = new THREE.MeshBasicMaterial({map: m.map || null, color: m.map ? 0xffffff : m.color.clone().convertSRGBToLinear(), side: THREE.DoubleSide,
+        transparent: m.transparent, opacity: m.opacity, depthWrite: !m.transparent,
+        polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, clippingPlanes: CLIP});
+      b.name = m.name; o.material = b; m.dispose();
+      if (b.transparent) o.renderOrder = 2;
+    }
+    if (o.isLine || o.isLineSegments){ o.material.transparent = true; o.material.opacity = 0.55; o.material.depthWrite = false; o.material.color.set(0x1a1714); o.material.clippingPlanes = CLIP; }
+    if (o.isMesh && !o.material.transparent) allMeshes.push(o);
+    if (o.isMesh && o.geometry.attributes._objid) pickables.push(o);
+  });
+  root.children.forEach(g => { groups[g.name] = g; });
+  scene.add(root);
+  const pts = [[-0.15, -0.029], [20.408, -0.029], [20.408, -9.263], [-0.15, -9.263], [-0.15, -0.029]].map(p => new THREE.Vector3(p[0], 0, p[1]));
+  cutRing = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0xb4552d}));
+  scene.add(cutRing);
+  setCut(2.4);
+  $('load').hidden = true;
+  fromHash();
+}
+function fail(){ $('loadTxt').textContent = 'Model gagal dimuat. Muat ulang halaman untuk mencoba lagi.'; }
+// model is published as base64 text (binary .glb is not a served type)
+(async () => {
+  try {
+    const res = await fetch('model-glb.txt');
+    if (!res.ok) throw new Error(res.status);
+    const total = +res.headers.get('content-length') || 15277177;
+    const reader = res.body.getReader(); const chunks = []; let got = 0;
+    for (;;){
+      const {done, value} = await reader.read(); if (done) break;
+      chunks.push(value); got += value.length;
+      $('prog').firstElementChild.style.width = Math.min(100, 100 * got / total).toFixed(0) + '%';
+      $('loadTxt').textContent = 'Memuat model 3D… ' + Math.min(100, 100 * got / total).toFixed(0) + '%';
+    }
+    const txt = new TextDecoder().decode(await new Blob(chunks).arrayBuffer());
+    const bin = atob(txt.trim()); const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    $('loadTxt').textContent = 'Menyiapkan tampilan…';
+    loader.parse(buf.buffer, './', onModel, fail);
+  } catch (e) { fail(); }
+})();
+
+function loop(now){
+  requestAnimationFrame(loop);
+  if (anim) anim(now);
+  if (orthoOn) controls2.update(); else controls.update();
+  renderer.render(scene, orthoOn ? ortho : camera);
+}
+requestAnimationFrame(loop);
+})();
+</script>
